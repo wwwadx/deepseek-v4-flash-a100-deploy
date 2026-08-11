@@ -17,8 +17,10 @@
 
 ## 推理引擎（fork，必须从源码编译）
 - repo:   https://github.com/haosdent/vllm.git
-- branch: dsv4-flash-a100
-- commit: 01ecc8e4f62ca6f3c2add67eede38aa2548204ce
+- commit: 01ecc8e4f62ca6f3c2add67eede38aa2548204ce  ← 唯一权威引用
+- branch: dsv4-flash-a100（仅供参考，**可变**：2026-08-11 实测该分支已被 force-push 到
+  `12810046`，与本 pin 分叉。按分支名 clone 再 checkout 这个 SHA 会失败，
+  必须 `git fetch --no-tags origin <SHA>`。`scripts/install.sh` 已按此方式取。）
 - 本地补丁: patches/0001-guard-non-v1-routes.patch（修复鉴权绕过，必须应用）
 - 编译目标: TORCH_CUDA_ARCH_LIST=8.0
 

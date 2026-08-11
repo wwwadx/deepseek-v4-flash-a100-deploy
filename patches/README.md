@@ -27,8 +27,8 @@ GUARDED_PREFIX = ("/v1", "/v2", "/inference")
 | | |
 |---|---|
 | 上游 | vLLM (Apache-2.0) |
-| 经由 | `haosdent/vllm` 分支 `dsv4-flash-a100` |
-| 锁定 commit | `01ecc8e4f62ca6f3c2add67eede38aa2548204ce` |
+| 经由 | `haosdent/vllm`（分支 `dsv4-flash-a100` 可变，已 force-push 过，勿按分支名取）|
+| 锁定 commit | `01ecc8e4f62ca6f3c2add67eede38aa2548204ce`（用 `git fetch origin <SHA>`）|
 | 目标文件 | `vllm/entrypoints/serve/utils/server_utils.py` |
 
 `scripts/install.sh` 会自动三态判断（已应用 / 可应用 / 无法应用），

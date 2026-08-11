@@ -60,7 +60,31 @@ GXX=$DATA/dsv4/gxx_env12/bin/x86_64-conda-linux-gnu-g++
 [ -x "$GXX" ] || conda create -y --prefix "$DATA/dsv4/gxx_env12" -c conda-forge gxx_linux-64=12 gcc_linux-64=12
 echo "  ✓ python=$($PY -V 2>&1) gcc=$($GXX --version | head -1)"
 
-say "4/8 下载模型（166.9GB）"
+
+say "4/8 拉取 vLLM 源码并应用鉴权补丁"
+# 按 SHA 取，不按分支名取。上游分支 dsv4-flash-a100 是可变的，已经被 force-push 到
+# 别的提交上（2026-08-11 实测 tip=12810046，与本 pin 分叉 ahead1/behind1），
+# 此时 `clone --branch` + `checkout $COMMIT` 会失败：reference is not a tree。
+# 只有这个 SHA 是权威的。
+# 这一步刻意排在下载权重之前——取不到源码就该几秒内失败，而不是先花几小时下 166GB。
+mkdir -p "$BUILD/vllm"
+cd "$BUILD/vllm"
+[ -d .git ] || git init -q
+git remote get-url origin >/dev/null 2>&1 || git remote add origin https://github.com/haosdent/vllm.git
+git cat-file -e "$COMMIT^{commit}" 2>/dev/null || git fetch --no-tags origin "$COMMIT" \
+  || die "取不到 pinned commit $COMMIT。上游可能已删除该对象；见 VERSIONS.md。"
+git checkout -q "$COMMIT" || die "checkout $COMMIT 失败（构建树可能有冲突的本地改动）"
+# 三态判断：已应用 / 可应用 / 无法应用。绝不能把失败当成"已在位"——
+# 那会静默产出一个 /invocations 无需凭据的服务器。
+if git apply -R --check "$PATCH" 2>/dev/null; then
+  echo "  ✓ 鉴权补丁已在位"
+elif git apply --check "$PATCH" 2>/dev/null; then
+  git apply "$PATCH"; echo "  ✓ 已应用鉴权补丁"
+else
+  die "鉴权补丁无法应用（commit 是否为 $COMMIT？）。中止，否则会产出无鉴权的服务。"
+fi
+
+say "5/8 下载模型（166.9GB）"
 if [ ! -f "$MODEL/model.safetensors.index.json" ]; then
   MODELSCOPE_CACHE=$DATA/dsv4/cache/modelscope \
     modelscope download --model deepseek-ai/DeepSeek-V4-Flash-0731 \
@@ -76,24 +100,8 @@ assert t==166878536440, f"total_size 不匹配: {t}"
 print(f"  ✓ 模型校验通过: {n} shards, {t} bytes")
 PY
 
-say "5/8 拉取 fork 并应用鉴权补丁"
-if [ ! -d "$BUILD/vllm/.git" ]; then
-  mkdir -p "$BUILD"
-  git clone --branch dsv4-flash-a100 --single-branch https://github.com/haosdent/vllm.git "$BUILD/vllm"
-fi
-cd "$BUILD/vllm"
-git checkout -q "$COMMIT"
-# 三态判断：已应用 / 可应用 / 无法应用。绝不能把失败当成"已在位"——
-# 那会静默产出一个 /invocations 无需凭据的服务器。
-if git apply -R --check "$PATCH" 2>/dev/null; then
-  echo "  ✓ 鉴权补丁已在位"
-elif git apply --check "$PATCH" 2>/dev/null; then
-  git apply "$PATCH"; echo "  ✓ 已应用鉴权补丁"
-else
-  die "鉴权补丁无法应用（commit 是否为 $COMMIT？）。中止，否则会产出无鉴权的服务。"
-fi
-
 say "6/8 编译 vLLM（SM80，约 24 分钟）"
+cd "$BUILD/vllm"                                   # 显式声明，别依赖上一步残留的 cwd
 if [ ! -f .venv/.build-complete ]; then
   [ -d .venv ] || "$PY" -m venv --copies .venv     # --copies: 不依赖外部解释器目录
   # 构建缓存同样要避开根分区
@@ -109,6 +117,19 @@ if [ ! -f .venv/.build-complete ]; then
   # torchvision 必须匹配 torch 的 CUDA build，否则 import 即报 nms 缺失
   .venv/bin/uv pip install torchvision --torch-backend=cu129 --no-deps
   touch .venv/.build-complete                      # 哨兵放在最后，避免半截构建被当成完成
+fi
+# 构建依赖是现解析的，没有 lockfile。核对关键包是否和本部署一致——不一致不中止，
+# 但要明说，否则"复现"只是复现了流程，不是复现了那套二进制。
+if [ -f "$REPO/VERSIONS.lock" ]; then
+  MISMATCH=0
+  for pkg in torch torchvision flashinfer-python transformers triton; do
+    want=$(grep -iE "^${pkg}==" "$REPO/VERSIONS.lock" | head -1)
+    got=$(.venv/bin/pip freeze 2>/dev/null | grep -iE "^${pkg}==" | head -1)
+    [ "$want" = "$got" ] || { printf '  警告: %s 与本部署不同（本部署 %s，此处 %s）\n' \
+      "$pkg" "${want:-未记录}" "${got:-未安装}"; MISMATCH=1; }
+  done
+  [ "$MISMATCH" -eq 0 ] && echo "  ✓ 关键依赖版本与 VERSIONS.lock 一致" \
+    || echo "  → 完整对照见 $REPO/VERSIONS.lock；性能与正确性结论以本部署版本为准"
 fi
 echo "  ✓ 构建完成"
 

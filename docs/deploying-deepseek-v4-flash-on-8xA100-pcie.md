@@ -73,12 +73,24 @@ We went through two community forks, and the difference between them mattered mo
 
 **2. `haosdent/vllm@dsv4-flash-a100`** — far more actively maintained, incorporating fixes from several contributors, rebased on a current vLLM commit, and crucially including a working Ampere implementation of DeepSeek's own speculative decoding (DSpark). This is what we shipped: **~40 tok/s single-stream**.
 
-**Pin the commit.** A branch name is not a reproducible reference, and correctness results are only meaningful against a specific tree:
+**Pin the commit, and fetch by SHA — not by branch.** A branch name is not a reproducible
+reference, and correctness results are only meaningful against a specific tree. This is not
+hypothetical here: `dsv4-flash-a100` has since been force-pushed away from the commit below
+(as of 2026-08-11 it tips at `12810046`, which is *diverged* from our pin — one commit ahead
+and one behind). Cloning the branch and then checking out the pinned SHA now fails outright
+with `fatal: reference is not a tree`, because that object is no longer reachable from the
+branch. Ask the server for the SHA directly instead:
 
 ```bash
-git clone --branch dsv4-flash-a100 --single-branch https://github.com/haosdent/vllm.git
-cd vllm && git checkout 01ecc8e4f62ca6f3c2add67eede38aa2548204ce
+mkdir vllm && cd vllm && git init
+git remote add origin https://github.com/haosdent/vllm.git
+git fetch --no-tags origin 01ecc8e4f62ca6f3c2add67eede38aa2548204ce
+git checkout FETCH_HEAD
 ```
+
+GitHub serves any commit that still exists in the repository this way, whether or not a
+branch points at it. If this ever stops working, the upstream object has been garbage
+collected and there is no way to reproduce this build from that fork — see VERSIONS.md.
 
 ### Building it
 
