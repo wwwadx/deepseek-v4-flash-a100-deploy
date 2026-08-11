@@ -1,0 +1,31 @@
+diff --git a/vllm/entrypoints/serve/utils/server_utils.py b/vllm/entrypoints/serve/utils/server_utils.py
+index c60abfae9..99750e7d1 100644
+--- a/vllm/entrypoints/serve/utils/server_utils.py
++++ b/vllm/entrypoints/serve/utils/server_utils.py
+@@ -39,7 +39,25 @@ from vllm.v1.engine.exceptions import EngineDeadError, EngineGenerateError
+ logger = init_logger("vllm.entrypoints.openai.server_utils")
+ 
+ 
+-GUARDED_PREFIX = ("/v1", "/v2", "/inference")
++# LOCAL PATCH (dsv4-a100 deployment, 2026-08-10): upstream only guards the
++# OpenAI-shaped prefixes, which leaves POST /invocations -- the SageMaker
++# compatibility route dispatching to the very same chat/completions handler --
++# reachable with no credentials, fully bypassing --api-key. The tokenizer
++# routes and the mutating elastic-EP control routes are likewise unguarded.
++# Everything below is additive; /health, /ping, /metrics, /version and the
++# docs routes stay open on purpose so monitoring keeps working.
++GUARDED_PREFIX = (
++    "/v1",
++    "/v2",
++    "/inference",
++    "/invocations",
++    "/tokenize",
++    "/detokenize",
++    "/generative_scoring",
++    "/scale_elastic_ep",
++    "/is_scaling_elastic_ep",
++    "/load",
++)
+ 
+ 
+ class AuthenticationMiddleware:

@@ -1,0 +1,35 @@
+[Unit]
+Description=DeepSeek-V4-Flash-0731 vLLM server (SM80 fork, TP=8, 1M context)
+After=network-online.target data1.mount
+Wants=network-online.target
+# The venv shim, model weights and gcc12 toolchain live on /data1; without this
+# the unit would start before the mount and fail permanently after a reboot.
+# NOTE: if the venv was created from an interpreter living elsewhere, that
+# interpreter's directory is also load-bearing -- verify before pruning disks.
+# `python -m venv --copies` avoids this coupling.
+RequiresMountsFor=/data1
+# Never let a fast crash-loop burn the GPUs: 3 failures in 30 min stops the unit.
+# (These are [Unit] keys -- systemd ignores them under [Service].)
+StartLimitIntervalSec=1800
+StartLimitBurst=3
+
+[Service]
+Type=simple
+ExecStart=/data1/dsv4/v2_attempt/serve_production.sh
+# API key injected here so it never appears in the world-readable process argv.
+EnvironmentFile=/etc/deepseek-v4-flash.env
+Restart=on-failure
+RestartSec=30
+# Model load takes ~4-5 min; give a cold start room before systemd calls it failed.
+TimeoutStartSec=900
+User=root
+StandardOutput=append:/data1/dsv4/v2_attempt/serve_final.log
+StandardError=append:/data1/dsv4/v2_attempt/serve_final.log
+# Modest hardening; the service needs GPUs, /data1 and the network, nothing else.
+NoNewPrivileges=true
+ProtectHome=false
+ProtectSystem=full
+PrivateTmp=false
+
+[Install]
+WantedBy=multi-user.target

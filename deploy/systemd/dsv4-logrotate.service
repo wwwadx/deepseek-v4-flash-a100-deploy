@@ -1,0 +1,6 @@
+[Unit]
+Description=Rotate DeepSeek-V4-Flash server log (logrotate is not installed)
+RequiresMountsFor=/data1
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/dsv4-logrotate.sh

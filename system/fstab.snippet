@@ -1,0 +1,9 @@
+# 数据盘必须写进 /etc/fstab，否则重启后挂载消失，服务永久起不来
+# （venv / 模型权重 / 工具链都在上面）。unit 里的 RequiresMountsFor=
+# 救不了一个根本不在 fstab 里的挂载点。
+#
+# nofail            : 盘缺失时降级而非卡在 emergency mode
+# device-timeout    : 冷启动 PCIe 枚举较慢，留足时间
+#
+# 取本机 UUID：  blkid -s UUID -o value /dev/nvme0n1p1
+UUID=<YOUR-DATA-DISK-UUID>  /data1  ext4  defaults,nofail,x-systemd.device-timeout=120s  0 2

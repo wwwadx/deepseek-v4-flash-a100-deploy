@@ -1,0 +1,30 @@
+DeepSeek-V4-Flash-0731 on 8x A100 PCIe — deployment artifacts
+Copyright 2026 the repository authors
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This repository is deployment tooling and documentation. It contains no
+upstream source code, but it does ship ONE PATCH against third-party code:
+
+  patches/0001-guard-non-v1-routes.patch
+    Applies to : vllm/entrypoints/serve/utils/server_utils.py
+    Upstream   : vLLM — https://github.com/vllm-project/vllm  (Apache-2.0)
+    Obtained via: https://github.com/haosdent/vllm  branch dsv4-flash-a100
+    Pinned commit: 01ecc8e4f62ca6f3c2add67eede38aa2548204ce
+    The patched file remains under the Apache License 2.0 of the vLLM project.
+
+Third-party work this deployment depends on or credits:
+
+  vLLM                    https://github.com/vllm-project/vllm            Apache-2.0
+  haosdent/vllm           https://github.com/haosdent/vllm                Apache-2.0
+    SM80 (Ampere) enablement for DeepSeek-V4-Flash, incl. the DSpark
+    speculative-decoding path. This deployment is built from that fork.
+  Lasimeri/vllm-dsv4-ampere
+                          https://github.com/Lasimeri/vllm-dsv4-ampere
+    Earlier community Ampere port (Triton/PyTorch reimplementations of the
+    Hopper-only kernels). Evaluated and documented here; not shipped.
+  DeepGEMM                https://github.com/deepseek-ai/DeepGEMM         MIT
+  DeepSeek-V4-Flash-0731  https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash-0731
+    Model weights are NOT redistributed here; see the model card for its licence.
+
+Ampere support tracking issue:
+  https://github.com/vllm-project/vllm/issues/50576

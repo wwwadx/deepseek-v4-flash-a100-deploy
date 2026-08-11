@@ -1,0 +1,7 @@
+[Unit]
+Description=Hourly size check for the DeepSeek-V4-Flash server log
+[Timer]
+OnCalendar=hourly
+Persistent=true
+[Install]
+WantedBy=timers.target

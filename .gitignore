@@ -1,0 +1,15 @@
+# 站点专属 / 敏感信息，永不入库
+CLAUDE.md
+
+# 真实密钥
+*.env
+!*.env.example
+deepseek-v4-flash.env
+*.key
+
+# 日志与编辑器备份（.env.bak 不会被 *.env 匹配到）
+*.log
+*.bak
+*~
+
+.claude/
