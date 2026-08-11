@@ -144,9 +144,11 @@ if [ "$BIND" = "0.0.0.0" ]; then
 fi
 
 say "等待就绪（冷启动约 4-5 分钟）"
+# 探测地址必须跟随 BIND：BIND 为具体 IP 时 loopback 探不到，会把健康的部署误判为失败
+PROBE=$([ "$BIND" = "0.0.0.0" ] && echo 127.0.0.1 || echo "$BIND")
 for _ in $(seq 1 90); do
-  if curl -sf -m 5 -o /dev/null "http://127.0.0.1:8000/health" 2>/dev/null; then
-    echo "  ✓ 就绪"; exec "$REPO/scripts/verify.sh"
+  if curl -sf -m 5 -o /dev/null "http://$PROBE:8000/health" 2>/dev/null; then
+    echo "  ✓ 就绪"; exec env HOST="http://$PROBE:8000" "$REPO/scripts/verify.sh"
   fi
   systemctl is-active --quiet deepseek-v4-flash.service || die "服务启动失败，见 journalctl -u deepseek-v4-flash"
   sleep 10
